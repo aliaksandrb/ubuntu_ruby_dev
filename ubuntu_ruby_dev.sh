@@ -180,14 +180,6 @@ install_dev_packages () {
   if [ "$(check_if_running "postgresql")" == 0 ]; then
     sudo service postgresql stop &>> "$LOG_FILE"
   fi
-  logger "And start the MySQL server with: " "\`sudo service mysql start\`"
-  unset DEBIAN_FRONTEND
-
-  apt_install "postgresql"
-  apt_install "postgresql-contrib"
-  if [ "$(check_if_running "postgresql")" == 0 ]; then
-    sudo service postgresql stop > /
-  fi
   logger "Start the Postgresql server with: " "\`sudo service postgresql start\`"
 
   logger "Installing latest stable Redis"

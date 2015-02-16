@@ -7,8 +7,8 @@ This simple bash script will install common packages used in Ruby/Rails developm
 Tested on:
 ----------
 
-* Ubuntu 14.04.1 LTS Desktop Edition (Unity DE)
-* Ubuntu 14.04.1 LTS Minimal Install (without any DE at all)
+* Ubuntu 14.04.1 LTS x86_64 Desktop Edition (Unity DE)
+* Ubuntu 14.04.1 LTS x86_64 Minimal Install (without any DE at all)
 
 
 How to use:
@@ -37,7 +37,7 @@ Than it will remove all installed packages. Use with caution!
 Processing logs will be available in the same folder in the `ubuntu_ruby_dev.log` file.
 
 
-What is inluded:
+What is included:
 ----------------
 
 * bash
@@ -81,12 +81,12 @@ TODO:
 - [ ] code refactoring and automation testing (at least syntax)
 
 
-Inspired by
+Inspired by:
 ------------
 
 [thoughtbot OS X laptop script](https://github.com/thoughtbot/laptop)
 
 
-License
+License:
 ------------
 Copyright (c) [MIT](http://choosealicense.com/licenses/mit/) [2015] [[aliaksandrb](https://github.com/aliaksandrb)]
