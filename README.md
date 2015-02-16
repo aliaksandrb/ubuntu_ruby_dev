@@ -1,4 +1,4 @@
-Ubuntu Ruby Dev
+Ubuntu Ruby Dev [![Build Status](https://travis-ci.org/aliaksandrb/ubuntu_ruby_dev.svg?branch=master)](https://travis-ci.org/aliaksandrb/ubuntu_ruby_dev)
 ================
 
 This simple bash script will install common packages used in Ruby/Rails development to your empty Ubuntu machine.
@@ -70,6 +70,8 @@ Currently you can edit the list to be installed only in script directly :scream:
 TODO:
 -----
 
+- [x] add automated testing (at least syntax)
+- [ ] refactor script syntax in accordance with Shellcheck style guides (Travis CI build status)
 - [ ] add 'verbose' option to show what is going on not only in log file
 - [ ] add possibility to select installation packages rather than install everything
 - [ ] check already installed tools, upgrade them or do nothing if not needed
@@ -78,7 +80,6 @@ TODO:
 - [ ] add possibility to read from external source file for additional packages or commands
 - [ ] implement more intellegent revert process to uninstall only packages installed by script itself (50%)
 - [ ] add post install message with information about installation paths and configuration options
-- [ ] code refactoring and automation testing (at least syntax)
 
 
 Inspired by:
