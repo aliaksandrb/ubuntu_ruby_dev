@@ -77,18 +77,20 @@ check_root () {
   fi
 }
 
-check_if_running () {
-  local UTIL=$1
-  ps aux | grep "[${UTIL:0:1}]${UTIL:1:${#UTIL}}" > /dev/null
+p () {
+  eval "$1" |& tee -a "$LOG_FILE" > /dev/null
+}
 
+check_if_running () {
+  pgrep "$1" > /dev/null
   echo $?
 }
 
 apt_install () {
   local PACKAGE="$1"
-  if ! which $PACKAGE > /dev/null; then
+  if ! which "$PACKAGE" > /dev/null; then
     logger "Installing: " "$PACKAGE"
-    sudo apt-get install -y "$PACKAGE" &>> "$LOG_FILE"
+    p "sudo apt-get install -y $PACKAGE"
     INSTALLED_BY_SCRIPT+=($PACKAGE)
   else
     logger "Already installed: " "$PACKAGE"
@@ -98,19 +100,19 @@ apt_install () {
 apt_remove () {
   local PACKAGE="$1"
   logger "Removing: " "$PACKAGE"
-  sudo apt-get remove -y "$PACKAGE" &>> "$LOG_FILE"
+  p "sudo apt-get remove -y $PACKAGE"
 }
 
 install_dependencies () {
-  sudo apt-get update &>> "$LOG_FILE"
-  for NAME in ${DEPENDANCIES[@]}
+  p "sudo apt-get update"
+  for NAME in "${DEPENDANCIES[@]}"
   do
     apt_install "$NAME"
   done
 }
 
 rvm_signed_ok () {
-  \curl -sSL https://get.rvm.io | bash -s stable --ruby &>> "$LOG_FILE"
+  curl -sSL https://get.rvm.io | bash -s stable --ruby &>> "$LOG_FILE"
   source "$HOME/.rvm/scripts/rvm"
 
   local RVM_VERSION=$(rvm --version)
@@ -146,7 +148,7 @@ uninstall_rvm () {
 
   for CONFIG in {.bashrc,.bash_profile,.profile,.zshrc,.mkshrc,.zlogin}
   do
-    sed --in-place '/.*$HOME\/\.rvm\/.*/d' "$CONFIG"
+    sed --in-place "/.*\$HOME\/\.rvm\/.*/d" "$CONFIG"
   done
 
   gpg --batch --quiet --delete-key --yes D39DC0E3 &>> "$LOG_FILE"
@@ -161,16 +163,16 @@ uninstall_rvm () {
 
 install_dev_packages () {
   apt_remove "nodejs"
-  curl -sL https://deb.nodesource.com/setup | sudo bash - &>> "$LOG_FILE"
-  sudo apt-get -y update &>> "$LOG_FILE"
+  p "curl -sL https://deb.nodesource.com/setup | sudo bash -"
+  p "sudo apt-get -y update"
   apt_install "nodejs" # UPGRADE IF IT IS INSTALLED
   apt_install "imagemagick"
 
   logger "Installing: " "MySQL"
-  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -q mysql-server mysql-client libmysqlclient-dev &>> "$LOG_FILE"
+  p "sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -q mysql-server mysql-client libmysqlclient-dev"
   logger "Do not forget to set MySQL root password: " "\`mysqladmin -u root password your_password\`"
   if [ "$(check_if_running "mysql")" == 0 ]; then
-    sudo service mysql stop &>> "$LOG_FILE"
+    p "sudo service mysql stop"
   fi
   logger "And start the MySQL server with: " "\`sudo service mysql start\`"
   unset DEBIAN_FRONTEND
@@ -178,7 +180,7 @@ install_dev_packages () {
   apt_install "postgresql"
   apt_install "postgresql-contrib"
   if [ "$(check_if_running "postgresql")" == 0 ]; then
-    sudo service postgresql stop &>> "$LOG_FILE"
+    p "sudo service postgresql stop"
   fi
   logger "Start the Postgresql server with: " "\`sudo service postgresql start\`"
 
@@ -188,7 +190,7 @@ install_dev_packages () {
   local RESULT=$(sudo make install 2>&1)
   if [ "$?" -eq 0 ]; then
     cd utils
-    printf "\n\n\n\n\n" | sudo ./install_server.sh >> "$LOG_FILE"
+    printf "\n\n\n\n\n" | sudo ./install_server.sh | tee -a "$LOG_FILE" > /dev/null
     cd ../..
     rm -rf redis-stable redis.tar.gz
 
@@ -201,7 +203,7 @@ install_dev_packages () {
   fi
 
   local CPU_CORES=$(grep --count '^processor' /proc/cpuinfo)
-  if [ $CPU_CORES -gt 1 ]; then
+  if [ "$CPU_CORES" -gt 1 ]; then
     logger "Set up Bundler to run on machine with $CPU_CORES cores"
     bundle config --global jobs $((CPU_CORES - 1)) >> "$LOG_FILE"
   fi
@@ -215,32 +217,32 @@ install_dev_packages () {
 
 uninstall_dev_packages () {
   logger "Removing NodeJs"
-  sudo rm -f /etc/apt/sources.list.d/nodesource.list &>> "$LOG_FILE"
+  p "sudo rm -f /etc/apt/sources.list.d/nodesource.list"
   apt_remove "nodejs"
 
   logger "Removing MySQL"
-  sudo service mysql stop &>> "$LOG_FILE"
-  sudo apt-get remove -y mysql-server mysql-client libmysqlclient-dev &>> "$LOG_FILE"
-  sudo apt-get remove -y mysql-* &>> "$LOG_FILE"
+  p "sudo service mysql stop"
+  p "sudo apt-get remove -y mysql-server mysql-client libmysqlclient-dev"
+  p "sudo apt-get remove -y mysql-*"
 
   logger "Removing Postgresql"
-  sudo service postgresql stop &>> "$LOG_FILE"
-  sudo apt-get remove -y postgresql postgresql-contrib &>> "$LOG_FILE"
+  p "sudo service postgresql stop"
+  p "sudo apt-get remove -y postgresql postgresql-contrib"
 
   logger "Removing Redis"
-  sudo service redis_6379 stop &>> "$LOG_FILE"
-  sudo rm /usr/local/bin/redis-* &>> "$LOG_FILE"
-  sudo rm -r /etc/redis/ &>> "$LOG_FILE"
-  sudo rm /var/log/redis_* &>> "$LOG_FILE"
-  sudo rm -r /var/lib/redis/ &>> "$LOG_FILE"
-  sudo rm /var/run/redis_* &>> "$LOG_FILE"
+  p "sudo service redis_6379 stop"
+  p "sudo rm /usr/local/bin/redis-*"
+  p "sudo rm -r /etc/redis/"
+  p "sudo rm /var/log/redis_*"
+  p "sudo rm -r /var/lib/redis/"
+  p "sudo rm /var/run/redis_*"
 }
 
 start_install_process () {
   logger "Starting installing required dependencies.."
   echo -e "\n\n------- INSTALL --------" >> "$LOG_FILE"
   install_dependencies
-  echo ${INSTALLED_BY_SCRIPT[@]} >> "$REVERT_FILE"
+  echo "${INSTALLED_BY_SCRIPT[@]}" >> "$REVERT_FILE"
   install_rvm
   install_dev_packages
   finish
@@ -250,20 +252,20 @@ revert () {
   logger "Reverting installation.."
   if [ -f $REVERT_FILE ]; then
     echo -e "\n\n------- REVERT --------" >> "$LOG_FILE"
-    readarray DEPENDANCIES < "$REVERT_FILE"
-    for NAME in ${DEPENDANCIES[@]}
+    IFS=$'\n' DEPENDANCIES=($(cat "$REVERT_FILE"))
+    for NAME in "${DEPENDANCIES[@]}"
     do
       apt_remove "$NAME"
-      sed --in-place "/"$NAME"/d" "$REVERT_FILE"
+      sed --in-place "/$NAME/d" "$REVERT_FILE"
     done
     uninstall_rvm
     rm -rf "$REVERT_FILE"
     uninstall_dev_packages
 
-    sudo apt-get autoremove -y &>> "$LOG_FILE"
-    sudo apt-get autoclean -y &>> "$LOG_FILE"
-    sudo apt-get clean -y &>> "$LOG_FILE"
-    sudo apt-get update -y &>> "$LOG_FILE"
+    p "sudo apt-get autoremove -y"
+    p "sudo apt-get autoclean -y"
+    p "sudo apt-get clean -y"
+    p "sudo apt-get update -y"
 
     logger "Revert finished successfully!"
     exit 0
@@ -279,11 +281,11 @@ if [ "$1" != "" ]; then
       usage
       ;;
     "-i"|"--install")
-      check_root
+      check_root "$*"
       print_the_greeting
       ;;
     "-r"|"--revert")
-      check_root
+      check_root "$*"
       revert
       ;;
     *)
@@ -293,7 +295,7 @@ if [ "$1" != "" ]; then
       ;;
   esac
 else
-  check_root
+  check_root "$*"
   print_the_greeting
 fi
 
