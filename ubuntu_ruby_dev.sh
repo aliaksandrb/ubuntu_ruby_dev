@@ -4,14 +4,16 @@ DEPENDANCIES=(bash awk sed grep ls cp tar curl gunzip bunzip2 git vim)
 INSTALLED_BY_SCRIPT=()
 REVERT_FILE="ubuntu_ruby_dev_revert.txt"
 LOG_FILE="ubuntu_ruby_dev.log"
+VERBOSE=0
 
 usage () {
-  echo "Usage: $0 [-h|--help|-i|--install|-r|--revert]"
+  echo "Usage: $0 [-h|--help|-i|--install|-r|--revert] [-v|--verbose]"
   echo "Default: -i"
   echo ""
   echo "  -h | --help     print this help"
   echo "  -i | --install  start installation process"
   echo "  -r | --revert   revert installation by uninstalling"
+  echo "  -v | --verbose  print logs to STDOUT additionally to the log file"
 }
 
 print_the_greeting () {
@@ -78,7 +80,11 @@ check_root () {
 }
 
 p () {
-  eval "$1" |& tee -a "$LOG_FILE" > /dev/null
+  if [ "$VERBOSE" -eq 1 ]; then
+    eval "$1" |& tee -a "$LOG_FILE"
+  else
+    eval "$1" |& tee -a "$LOG_FILE" > /dev/null
+  fi
 }
 
 check_if_running () {
@@ -275,18 +281,30 @@ revert () {
   fi
 }
 
+check_root_and_print_greeting () {
+  check_root "$*"
+  print_the_greeting
+}
+
 if [ "$1" != "" ]; then
+  if [ "$2" != "" -a \( "$2" == "-v" -o "$2" == "--verbose" \) ]; then
+    VERBOSE=1
+  fi
+
   case "$1" in
     "-h"|"--help")
       usage
       ;;
     "-i"|"--install")
-      check_root "$*"
-      print_the_greeting
+      check_root_and_print_greeting "$*"
       ;;
     "-r"|"--revert")
       check_root "$*"
       revert
+      ;;
+    "-v"|"--verbose")
+      VERBOSE=1
+      check_root_and_print_greeting "$*"
       ;;
     *)
       logger "UNKNOWN OPTION: " "$1"
@@ -295,7 +313,6 @@ if [ "$1" != "" ]; then
       ;;
   esac
 else
-  check_root "$*"
-  print_the_greeting
+  check_root_and_print_greeting "$*"
 fi
 
