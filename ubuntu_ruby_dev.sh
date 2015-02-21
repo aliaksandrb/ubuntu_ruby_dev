@@ -6,6 +6,7 @@ REVERT_FILE="ubuntu_ruby_dev_revert.txt"
 LOG_FILE="ubuntu_ruby_dev.log"
 PATTERN="^[yY](es)?$"
 VERBOSE=0
+RUBY_VERSION_FOR_INSTALL=0
 
 usage () {
   echo "Usage: $0 [-h|--help|-i|--install|-r|--revert] [-v|--verbose]"
@@ -118,7 +119,11 @@ install_dependencies () {
 }
 
 rvm_signed_ok () {
-  curl -sSL https://get.rvm.io | bash -s stable --ruby &>> "$LOG_FILE"
+  if [ "$RUBY_VERSION_FOR_INSTALL" -ne 0 ];then
+    curl -sSL https://get.rvm.io | bash -s stable --ruby=$RUBY_VERSION_FOR_INSTALL &>> "$LOG_FILE"
+  else
+    curl -sSL https://get.rvm.io | bash -s stable --ruby &>> "$LOG_FILE"
+  fi
   source "$HOME/.rvm/scripts/rvm"
 
   local RVM_VERSION=$(rvm --version)
@@ -130,8 +135,10 @@ rvm_signed_ok () {
 }
 
 install_rvm () {
-  logger "Install lattest stable RVM and Ruby?"
+  logger "Install latest stable RVM and Ruby? [Y]es/No"
   if [ "$(ask_for_permission)" == 1 ]; then
+    logger "Any specific Ruby version? [stable by default]"
+    read RUBY_VERSION_FOR_INSTALL
     logger "Installing RVM and Ruby." " Took a while.."
     local RESULT=$(gpg --keyserver hkp://keys.gnupg.net --recv-keys D39DC0E3 2>&1)
 
@@ -178,7 +185,7 @@ ask_for_permission () {
 }
 
 install_node () {
-  logger "Install lattest NodeJs ?"
+  logger "Install latest NodeJs ? [Y]es/No"
   if [ "$(ask_for_permission)" == 1 ]; then
     apt_remove "nodejs"
     p "curl -sL https://deb.nodesource.com/setup | sudo bash -"
@@ -188,7 +195,7 @@ install_node () {
 }
 
 install_mysql () {
-  logger "Install lattest MySQL ?"
+  logger "Install latest MySQL ? [Y]es/No"
   if [ "$(ask_for_permission)" == 1 ]; then
     logger "Installing: " "MySQL"
     p "sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -q mysql-server mysql-client libmysqlclient-dev"
@@ -202,7 +209,7 @@ install_mysql () {
 }
 
 install_postgre () {
-  logger "Install lattest Postgresql ?"
+  logger "Install latest Postgresql ? [Y]es/No"
   if [ "$(ask_for_permission)" == 1 ]; then
     apt_install "postgresql"
     apt_install "postgresql-contrib"
@@ -214,7 +221,7 @@ install_postgre () {
 }
 
 install_redis () {
-  logger "Install lattest Redis ?"
+  logger "Install latest Redis ? [Y]es/No"
   if [ "$(ask_for_permission)" == 1 ]; then
     logger "Installing latest stable Redis"
     curl -qo redis.tar.gz http://download.redis.io/redis-stable.tar.gz &>> "$LOG_FILE" && tar xzf redis.tar.gz && cd redis-stable
