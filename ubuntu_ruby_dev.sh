@@ -7,6 +7,8 @@ LOG_FILE="ubuntu_ruby_dev.log"
 PATTERN="^[yY](es)?$"
 VERBOSE=0
 RUBY_VERSION_FOR_INSTALL=0
+REDIS_INSTALLED=0
+NODE_INSTALLED=0
 
 usage () {
   echo "Usage: $0 [-h|--help|-i|--install|-r|--revert] [-v|--verbose]"
@@ -187,6 +189,7 @@ ask_for_permission () {
 install_node () {
   logger "Install latest NodeJs ? [Y]es/No"
   if [ "$(ask_for_permission)" == 1 ]; then
+    NODE_INSTALLED=1
     apt_remove "nodejs"
     p "curl -sL https://deb.nodesource.com/setup | sudo bash -"
     p "sudo apt-get -y update"
@@ -197,6 +200,7 @@ install_node () {
 install_mysql () {
   logger "Install latest MySQL ? [Y]es/No"
   if [ "$(ask_for_permission)" == 1 ]; then
+    INSTALLED_BY_SCRIPT+=(mysql-server mysql-client libmysqlclient-dev)
     logger "Installing: " "MySQL"
     p "sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -q mysql-server mysql-client libmysqlclient-dev"
     logger "Do not forget to set MySQL root password: " "\`mysqladmin -u root password your_password\`"
@@ -234,6 +238,7 @@ install_redis () {
       rm -rf redis-stable redis.tar.gz
 
       local REDIS_VERSION=$(redis-server --version)
+      REDIS_INSTALLED=1
       logger "Redis installed: " "v${REDIS_VERSION:15:6}"
       logger "Start the Redis server with: " "\`sudo service redis_6379 start\`"
     else
@@ -264,35 +269,39 @@ install_dev_packages () {
 }
 
 uninstall_dev_packages () {
-  logger "Removing NodeJs"
-  p "sudo rm -f /etc/apt/sources.list.d/nodesource.list"
-  apt_remove "nodejs"
+  if [ "$NODE_INSTALLED" -eq 1 ]; then
+   # logger "Removing NodeJs"
+    p "sudo rm -f /etc/apt/sources.list.d/nodesource.list"
+   # apt_remove "nodejs"
+  fi
 
-  logger "Removing MySQL"
-  p "sudo service mysql stop"
-  p "sudo apt-get remove -y mysql-server mysql-client libmysqlclient-dev"
-  p "sudo apt-get remove -y mysql-*"
+ # logger "Removing MySQL"
+ # p "sudo service mysql stop"
+ # p "sudo apt-get remove -y mysql-server mysql-client libmysqlclient-dev"
+ # p "sudo apt-get remove -y mysql-*"
 
-  logger "Removing Postgresql"
-  p "sudo service postgresql stop"
-  p "sudo apt-get remove -y postgresql postgresql-contrib"
+ # logger "Removing Postgresql"
+ #  p "sudo service postgresql stop"
+ #  p "sudo apt-get remove -y postgresql postgresql-contrib"
 
-  logger "Removing Redis"
-  p "sudo service redis_6379 stop"
-  p "sudo rm /usr/local/bin/redis-*"
-  p "sudo rm -r /etc/redis/"
-  p "sudo rm /var/log/redis_*"
-  p "sudo rm -r /var/lib/redis/"
-  p "sudo rm /var/run/redis_*"
+  if [ "$REDIS_INSTALLED" -eq 1 ]; then
+    logger "Removing Redis"
+    p "sudo service redis_6379 stop"
+    p "sudo rm /usr/local/bin/redis-*"
+    p "sudo rm -r /etc/redis/"
+    p "sudo rm /var/log/redis_*"
+    p "sudo rm -r /var/lib/redis/"
+    p "sudo rm /var/run/redis_*"
+  fi
 }
 
 start_install_process () {
   logger "Starting installing required dependencies.."
   echo -e "\n\n------- INSTALL --------" >> "$LOG_FILE"
   install_dependencies
-  echo "${INSTALLED_BY_SCRIPT[@]}" >> "$REVERT_FILE"
   install_rvm
   install_dev_packages
+  echo "${INSTALLED_BY_SCRIPT[@]}" >> "$REVERT_FILE"
   finish
 }
 
@@ -300,8 +309,8 @@ revert () {
   logger "Reverting installation.."
   if [ -f $REVERT_FILE ]; then
     echo -e "\n\n------- REVERT --------" >> "$LOG_FILE"
-    IFS=$'\n' DEPENDANCIES=($(cat "$REVERT_FILE"))
-    for NAME in "${DEPENDANCIES[@]}"
+    IFS=$'\n' INSTALLED_DEPENDANCIES=($(cat "$REVERT_FILE"))
+    for NAME in "${INSTALLED_DEPENDANCIES[@]}"
     do
       apt_remove "$NAME"
       sed --in-place "/$NAME/d" "$REVERT_FILE"

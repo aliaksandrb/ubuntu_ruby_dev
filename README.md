@@ -80,7 +80,7 @@ TODO:
 - [x] ~~add possibility to select required Ruby version rather than latest one~~
 - [ ] add possibility to select default root password to MySQL rather that empty one
 - [ ] add possibility to read from external source file for additional packages or commands
-- [ ] implement more intellegent revert process to uninstall only packages installed by script itself (50%)
+- [x] ~~implement more intellegent revert process to uninstall only packages installed by script itself~~
 - [ ] add post install message with information about installation paths and configuration options
 
 
