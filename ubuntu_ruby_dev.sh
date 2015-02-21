@@ -4,6 +4,7 @@ DEPENDANCIES=(bash awk sed grep ls cp tar curl gunzip bunzip2 git vim)
 INSTALLED_BY_SCRIPT=()
 REVERT_FILE="ubuntu_ruby_dev_revert.txt"
 LOG_FILE="ubuntu_ruby_dev.log"
+PATTERN="^[yY](es)?$"
 VERBOSE=0
 
 usage () {
@@ -46,7 +47,6 @@ print_the_greeting () {
   echo -e "\e[33m+-----------------------------------+\e[m"
 
   read GO
-  local PATTERN="^[yY](es)?$"
 
   if [ "$GO" != "" ]; then
     if [[ $GO =~ $PATTERN ]]; then
@@ -130,21 +130,24 @@ rvm_signed_ok () {
 }
 
 install_rvm () {
-  logger "Installing RVM and Ruby." " Took a while.."
-  local RESULT=$(gpg --keyserver hkp://keys.gnupg.net --recv-keys D39DC0E3 2>&1)
-
-  if [ "$?" -ne 0 ]; then
-    logger "Problem with gpg keyserver, trying another way: " "$RESULT"
-    local RESULT=$(curl -sSL https://rvm.io/mpapis.asc | gpg --import -)
+  logger "Install lattest stable RVM and Ruby?"
+  if [ "$(ask_for_permission)" == 1 ]; then
+    logger "Installing RVM and Ruby." " Took a while.."
+    local RESULT=$(gpg --keyserver hkp://keys.gnupg.net --recv-keys D39DC0E3 2>&1)
 
     if [ "$?" -ne 0 ]; then
-      logger "Failed to install RVM: " "$RESULT"
-      exit 1
+      logger "Problem with gpg keyserver, trying another way: " "$RESULT"
+      local RESULT=$(curl -sSL https://rvm.io/mpapis.asc | gpg --import -)
+
+      if [ "$?" -ne 0 ]; then
+        logger "Failed to install RVM: " "$RESULT"
+        exit 1
+      else
+        rvm_signed_ok
+      fi
     else
       rvm_signed_ok
     fi
-  else
-    rvm_signed_ok
   fi
 }
 
@@ -167,46 +170,78 @@ uninstall_rvm () {
   fi
 }
 
+ask_for_permission () {
+  read ANSWER
+  if [[ "$ANSWER" != "" && ( $ANSWER  =~ $PATTERN ) ]]; then
+    echo "1"
+  fi
+}
+
+install_node () {
+  logger "Install lattest NodeJs ?"
+  if [ "$(ask_for_permission)" == 1 ]; then
+    apt_remove "nodejs"
+    p "curl -sL https://deb.nodesource.com/setup | sudo bash -"
+    p "sudo apt-get -y update"
+    apt_install "nodejs" # UPGRADE IF IT IS INSTALLED
+  fi
+}
+
+install_mysql () {
+  logger "Install lattest MySQL ?"
+  if [ "$(ask_for_permission)" == 1 ]; then
+    logger "Installing: " "MySQL"
+    p "sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -q mysql-server mysql-client libmysqlclient-dev"
+    logger "Do not forget to set MySQL root password: " "\`mysqladmin -u root password your_password\`"
+    if [ "$(check_if_running "mysql")" == 0 ]; then
+      p "sudo service mysql stop"
+    fi
+    logger "And start the MySQL server with: " "\`sudo service mysql start\`"
+    unset DEBIAN_FRONTEND
+  fi
+}
+
+install_postgre () {
+  logger "Install lattest Postgresql ?"
+  if [ "$(ask_for_permission)" == 1 ]; then
+    apt_install "postgresql"
+    apt_install "postgresql-contrib"
+    if [ "$(check_if_running "postgresql")" == 0 ]; then
+      p "sudo service postgresql stop"
+    fi
+    logger "Start the Postgresql server with: " "\`sudo service postgresql start\`"
+  fi
+}
+
+install_redis () {
+  logger "Install lattest Redis ?"
+  if [ "$(ask_for_permission)" == 1 ]; then
+    logger "Installing latest stable Redis"
+    curl -qo redis.tar.gz http://download.redis.io/redis-stable.tar.gz &>> "$LOG_FILE" && tar xzf redis.tar.gz && cd redis-stable
+    make &>> "$LOG_FILE"
+    local RESULT=$(sudo make install 2>&1)
+    if [ "$?" -eq 0 ]; then
+      cd utils
+      printf "\n\n\n\n\n" | sudo ./install_server.sh | tee -a "$LOG_FILE" > /dev/null
+      cd ../..
+      rm -rf redis-stable redis.tar.gz
+
+      local REDIS_VERSION=$(redis-server --version)
+      logger "Redis installed: " "v${REDIS_VERSION:15:6}"
+      logger "Start the Redis server with: " "\`sudo service redis_6379 start\`"
+    else
+      cd ..
+      logger "Failed to install Redis: " "$RESULT"
+    fi
+  fi
+}
+
 install_dev_packages () {
-  apt_remove "nodejs"
-  p "curl -sL https://deb.nodesource.com/setup | sudo bash -"
-  p "sudo apt-get -y update"
-  apt_install "nodejs" # UPGRADE IF IT IS INSTALLED
   apt_install "imagemagick"
-
-  logger "Installing: " "MySQL"
-  p "sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -q mysql-server mysql-client libmysqlclient-dev"
-  logger "Do not forget to set MySQL root password: " "\`mysqladmin -u root password your_password\`"
-  if [ "$(check_if_running "mysql")" == 0 ]; then
-    p "sudo service mysql stop"
-  fi
-  logger "And start the MySQL server with: " "\`sudo service mysql start\`"
-  unset DEBIAN_FRONTEND
-
-  apt_install "postgresql"
-  apt_install "postgresql-contrib"
-  if [ "$(check_if_running "postgresql")" == 0 ]; then
-    p "sudo service postgresql stop"
-  fi
-  logger "Start the Postgresql server with: " "\`sudo service postgresql start\`"
-
-  logger "Installing latest stable Redis"
-  curl -qo redis.tar.gz http://download.redis.io/redis-stable.tar.gz &>> "$LOG_FILE" && tar xzf redis.tar.gz && cd redis-stable
-  make &>> "$LOG_FILE"
-  local RESULT=$(sudo make install 2>&1)
-  if [ "$?" -eq 0 ]; then
-    cd utils
-    printf "\n\n\n\n\n" | sudo ./install_server.sh | tee -a "$LOG_FILE" > /dev/null
-    cd ../..
-    rm -rf redis-stable redis.tar.gz
-
-    local REDIS_VERSION=$(redis-server --version)
-    logger "Redis installed: " "v${REDIS_VERSION:15:6}"
-    logger "Start the Redis server with: " "\`sudo service redis_6379 start\`"
-  else
-    cd ..
-    logger "Failed to install Redis: " "$RESULT"
-  fi
+  install_node
+  install_mysql
+  install_postgre
+  install_redis
 
   local CPU_CORES=$(grep --count '^processor' /proc/cpuinfo)
   if [ "$CPU_CORES" -gt 1 ]; then

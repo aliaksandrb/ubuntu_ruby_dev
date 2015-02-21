@@ -36,6 +36,8 @@ Than it will remove all installed packages. Use with caution!
 
 Processing logs will be available in the same folder in the `ubuntu_ruby_dev.log` file.
 
+Also you can use `-v` (`--verbose`) option to print logs to STDOUT additionaly to the log file.
+
 
 What is included:
 ----------------
