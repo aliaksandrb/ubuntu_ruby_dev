@@ -72,6 +72,7 @@ Currently you can edit the list to be installed only in script directly :scream:
 TODO:
 -----
 
+- [ ] ask everything required at the beggining of execution to allow silent install without user iteraction
 - [x] ~~add automated testing (at least syntax)~~
 - [x] ~~refactor script syntax in accordance with Shellcheck style guides (Travis CI build status)~~
 - [x] ~~add 'verbose' option to show what is going on not only in log file~~
@@ -82,6 +83,7 @@ TODO:
 - [ ] add possibility to read from external source file for additional packages or commands
 - [x] ~~implement more intellegent revert process to uninstall only packages installed by script itself~~
 - [ ] add post install message with information about installation paths and configuration options
+- [ ] make revert file dynamicly rather than at the end of execution (than if script fall in middle there would be something already)
 
 
 Inspired by:

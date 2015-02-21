@@ -6,9 +6,7 @@ REVERT_FILE="ubuntu_ruby_dev_revert.txt"
 LOG_FILE="ubuntu_ruby_dev.log"
 PATTERN="^[yY](es)?$"
 VERBOSE=0
-RUBY_VERSION_FOR_INSTALL=0
-REDIS_INSTALLED=0
-NODE_INSTALLED=0
+RUBY_VERSION_TO_INSTALL="0"
 
 usage () {
   echo "Usage: $0 [-h|--help|-i|--install|-r|--revert] [-v|--verbose]"
@@ -121,8 +119,8 @@ install_dependencies () {
 }
 
 rvm_signed_ok () {
-  if [ "$RUBY_VERSION_FOR_INSTALL" -ne 0 ];then
-    curl -sSL https://get.rvm.io | bash -s stable --ruby=$RUBY_VERSION_FOR_INSTALL &>> "$LOG_FILE"
+  if [ "$RUBY_VERSION_TO_INSTALL" != "0" ];then
+    curl -sSL https://get.rvm.io | bash -s stable --ruby=$RUBY_VERSION_TO_INSTALL &>> "$LOG_FILE"
   else
     curl -sSL https://get.rvm.io | bash -s stable --ruby &>> "$LOG_FILE"
   fi
@@ -130,6 +128,7 @@ rvm_signed_ok () {
 
   local RVM_VERSION=$(rvm --version)
   local RUBY_VERSION=$(ruby --version)
+  INSTALLED_BY_SCRIPT+=( rvm )
   logger "RVM installed: " "v${RVM_VERSION:4:6}"
   logger "With Ruby on board: " "v${RUBY_VERSION:5:5}"
 
@@ -140,7 +139,7 @@ install_rvm () {
   logger "Install latest stable RVM and Ruby? [Y]es/No"
   if [ "$(ask_for_permission)" == 1 ]; then
     logger "Any specific Ruby version? [stable by default]"
-    read RUBY_VERSION_FOR_INSTALL
+    read RUBY_VERSION_TO_INSTALL
     logger "Installing RVM and Ruby." " Took a while.."
     local RESULT=$(gpg --keyserver hkp://keys.gnupg.net --recv-keys D39DC0E3 2>&1)
 
@@ -189,7 +188,6 @@ ask_for_permission () {
 install_node () {
   logger "Install latest NodeJs ? [Y]es/No"
   if [ "$(ask_for_permission)" == 1 ]; then
-    NODE_INSTALLED=1
     apt_remove "nodejs"
     p "curl -sL https://deb.nodesource.com/setup | sudo bash -"
     p "sudo apt-get -y update"
@@ -238,7 +236,7 @@ install_redis () {
       rm -rf redis-stable redis.tar.gz
 
       local REDIS_VERSION=$(redis-server --version)
-      REDIS_INSTALLED=1
+      INSTALLED_BY_SCRIPT+=( redis )
       logger "Redis installed: " "v${REDIS_VERSION:15:6}"
       logger "Start the Redis server with: " "\`sudo service redis_6379 start\`"
     else
@@ -268,31 +266,19 @@ install_dev_packages () {
   apt_install "exuberant-ctags"
 }
 
-uninstall_dev_packages () {
-  if [ "$NODE_INSTALLED" -eq 1 ]; then
-   # logger "Removing NodeJs"
-    p "sudo rm -f /etc/apt/sources.list.d/nodesource.list"
-   # apt_remove "nodejs"
-  fi
+remove_node () {
+  apt_remove "nodejs"
+  p "sudo rm -f /etc/apt/sources.list.d/nodesource.list"
+}
 
- # logger "Removing MySQL"
- # p "sudo service mysql stop"
- # p "sudo apt-get remove -y mysql-server mysql-client libmysqlclient-dev"
- # p "sudo apt-get remove -y mysql-*"
-
- # logger "Removing Postgresql"
- #  p "sudo service postgresql stop"
- #  p "sudo apt-get remove -y postgresql postgresql-contrib"
-
-  if [ "$REDIS_INSTALLED" -eq 1 ]; then
-    logger "Removing Redis"
-    p "sudo service redis_6379 stop"
-    p "sudo rm /usr/local/bin/redis-*"
-    p "sudo rm -r /etc/redis/"
-    p "sudo rm /var/log/redis_*"
-    p "sudo rm -r /var/lib/redis/"
-    p "sudo rm /var/run/redis_*"
-  fi
+remove_redis () {
+  logger "Removing Redis"
+  p "sudo service redis_6379 stop"
+  p "sudo rm /usr/local/bin/redis-*"
+  p "sudo rm -r /etc/redis/"
+  p "sudo rm /var/log/redis_*"
+  p "sudo rm -r /var/lib/redis/"
+  p "sudo rm /var/run/redis_*"
 }
 
 start_install_process () {
@@ -312,12 +298,23 @@ revert () {
     IFS=$'\n' INSTALLED_DEPENDANCIES=($(cat "$REVERT_FILE"))
     for NAME in "${INSTALLED_DEPENDANCIES[@]}"
     do
-      apt_remove "$NAME"
+      case "$NAME" in
+        "redis")
+          remove_redis
+          ;;
+        "nodejs")
+          remove_node
+          ;;
+        "rvm")
+          uninstall_rvm
+          ;;
+        *)
+          apt_remove "$NAME"
+          ;;
+      esac
       sed --in-place "/$NAME/d" "$REVERT_FILE"
     done
-    uninstall_rvm
     rm -rf "$REVERT_FILE"
-    uninstall_dev_packages
 
     p "sudo apt-get autoremove -y"
     p "sudo apt-get autoclean -y"
