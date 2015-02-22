@@ -182,7 +182,8 @@ uninstall_rvm () {
 
 ask_for_permission () {
   read ANSWER
-  if [[ "$ANSWER" != "" && ( $ANSWER  =~ $PATTERN ) ]]; then
+
+  if [[ ("$ANSWER" != "" && ( $ANSWER  =~ $PATTERN )) || ( "$ANSWER" == "" ) ]]; then
     echo "1"
   fi
 }
