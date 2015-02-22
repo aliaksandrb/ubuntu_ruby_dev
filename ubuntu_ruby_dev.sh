@@ -8,6 +8,7 @@ PATTERN="^[yY](es)?$"
 VERBOSE=0
 INSTALL_RVM=0
 INSTALL_MYSQL=0
+MYSQL_PASSWORD=""
 INSTALL_POSTGRE=0
 INSTALL_REDIS=0
 INSTALL_NODE=0
@@ -206,12 +207,18 @@ install_mysql () {
     INSTALLED_BY_SCRIPT+=(mysql-server mysql-client libmysqlclient-dev)
     logger "Installing: " "MySQL"
     p "sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -q mysql-server mysql-client libmysqlclient-dev"
-    logger "Do not forget to set MySQL root password: " "\`mysqladmin -u root password your_password\`"
+    unset DEBIAN_FRONTEND
+
+    if [ "$MYSQL_PASSWORD" != "" ]; then
+      mysqladmin -u root password $MYSQL_PASSWORD
+    else
+      logger "Do not forget to set MySQL root password: " "\`mysqladmin -u root password your_password\`"
+    fi
+
     if [ "$(check_if_running "mysql")" == 0 ]; then
       p "sudo service mysql stop"
     fi
-    logger "And start the MySQL server with: " "\`sudo service mysql start\`"
-    unset DEBIAN_FRONTEND
+    logger "Start the MySQL server with: " "\`sudo service mysql start\`"
   fi
 }
 
@@ -301,6 +308,8 @@ start_install_process () {
 
   logger "Install latest MySQL ? [Y]es/No"
   if [ "$(ask_for_permission)" == 1 ]; then
+    logger "Want to set up root password? (installed without a password by default)"
+    read MYSQL_PASSWORD
     INSTALL_MYSQL=1
   fi
 

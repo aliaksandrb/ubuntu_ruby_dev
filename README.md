@@ -79,12 +79,12 @@ TODO:
 - [x] ~~add possibility to choose packages for install rather than install everything~~
 - [ ] check already installed tools, upgrade them or do nothing if not needed
 - [x] ~~add possibility to install specific Ruby version rather than just latest one~~
-- [ ] add possibility to select default root password to MySQL rather that empty one
+- [x] add possibility to select default root password to MySQL rather that empty one
 - [ ] add possibility to read from external source file for additional packages or commands
 - [x] ~~implement more intellegent revert process to uninstall only packages installed by script itself~~
 - [ ] add post install message with information about installation paths and configuration options
 - [ ] make revert file dynamicly rather than at the end of execution (than if script fall in middle there would be something already)
-- [ ] additional automated testing ? (at least syntax)~~
+- [ ] ?additional automated testing (at least syntax)?
 
 
 Inspired by:
