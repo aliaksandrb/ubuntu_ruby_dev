@@ -6,6 +6,11 @@ REVERT_FILE="ubuntu_ruby_dev_revert.txt"
 LOG_FILE="ubuntu_ruby_dev.log"
 PATTERN="^[yY](es)?$"
 VERBOSE=0
+INSTALL_RVM=0
+INSTALL_MYSQL=0
+INSTALL_POSTGRE=0
+INSTALL_REDIS=0
+INSTALL_NODE=0
 RUBY_VERSION_TO_INSTALL="0"
 
 usage () {
@@ -20,7 +25,8 @@ usage () {
 
 print_the_greeting () {
   echo -e "\e[33m+-----------------------------------+\e[m"
-  echo -e "\e[33m|\e[m\e[100m    This script will install:      \e[m\e[33m|\e[m"
+  echo -e "\e[33m|\e[m\e[100m           This script             \e[m\e[33m|\e[m"
+  echo -e "\e[33m|\e[m\e[100m     allow selectively install:    \e[m\e[33m|\e[m"
   echo -e "\e[33m|\e[m                                   \e[33m|\e[m"
   echo -e "\e[33m|\e[m     - bash                        \e[33m|\e[m"
   echo -e "\e[33m|\e[m     - awk                         \e[33m|\e[m"
@@ -44,7 +50,7 @@ print_the_greeting () {
   echo -e "\e[33m|\e[m     - Ag                          \e[33m|\e[m"
   echo -e "\e[33m|\e[m     - Ctags                       \e[33m|\e[m"
   echo -e "\e[33m|\e[m                                   \e[33m|\e[m"
-  echo -e "\e[33m|\e[m\e[100m    Continue ? [Y]es/No            \e[m\e[33m|\e[m"
+  echo -e "\e[33m|\e[m\e[100m       Continue ? [Y]es/No         \e[m\e[33m|\e[m"
   echo -e "\e[33m+-----------------------------------+\e[m"
 
   read GO
@@ -113,6 +119,7 @@ apt_remove () {
 }
 
 install_dependencies () {
+  logger "Starting installing required dependencies.."
   p "sudo apt-get update"
   for NAME in "${DEPENDANCIES[@]}"
   do
@@ -138,10 +145,7 @@ rvm_signed_ok () {
 }
 
 install_rvm () {
-  logger "Install latest stable RVM and Ruby? [Y]es/No"
-  if [ "$(ask_for_permission)" == 1 ]; then
-    logger "Any specific Ruby version? [stable by default]"
-    read RUBY_VERSION_TO_INSTALL
+  if [ "$INSTALL_RVM" -eq 1 ]; then
     logger "Installing RVM and Ruby." " Took a while.."
     local RESULT=$(gpg --keyserver hkp://keys.gnupg.net --recv-keys D39DC0E3 2>&1)
 
@@ -189,8 +193,7 @@ ask_for_permission () {
 }
 
 install_node () {
-  logger "Install latest NodeJs ? [Y]es/No"
-  if [ "$(ask_for_permission)" == 1 ]; then
+  if [ "$INSTALL_NODE" -eq 1 ]; then
     apt_remove "nodejs" --silent
     p "curl -sL https://deb.nodesource.com/setup | sudo bash -"
     p "sudo apt-get -y update"
@@ -199,8 +202,7 @@ install_node () {
 }
 
 install_mysql () {
-  logger "Install latest MySQL ? [Y]es/No"
-  if [ "$(ask_for_permission)" == 1 ]; then
+  if [ "$INSTALL_MYSQL" -eq 1 ]; then
     INSTALLED_BY_SCRIPT+=(mysql-server mysql-client libmysqlclient-dev)
     logger "Installing: " "MySQL"
     p "sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -q mysql-server mysql-client libmysqlclient-dev"
@@ -214,8 +216,7 @@ install_mysql () {
 }
 
 install_postgre () {
-  logger "Install latest Postgresql ? [Y]es/No"
-  if [ "$(ask_for_permission)" == 1 ]; then
+  if [ "$INSTALL_POSTGRE" -eq 1 ]; then
     apt_install "postgresql"
     apt_install "postgresql-contrib"
     if [ "$(check_if_running "postgresql")" == 0 ]; then
@@ -226,8 +227,7 @@ install_postgre () {
 }
 
 install_redis () {
-  logger "Install latest Redis ? [Y]es/No"
-  if [ "$(ask_for_permission)" == 1 ]; then
+  if [ "$INSTALL_REDIS" -eq 1 ]; then
     logger "Installing latest stable Redis"
     curl -qo redis.tar.gz http://download.redis.io/redis-stable.tar.gz &>> "$LOG_FILE" && tar xzf redis.tar.gz && cd redis-stable
     make &>> "$LOG_FILE"
@@ -250,21 +250,23 @@ install_redis () {
 }
 
 install_dev_packages () {
-  apt_install "imagemagick"
   install_node
   install_mysql
   install_postgre
   install_redis
 
-  local CPU_CORES=$(grep --count '^processor' /proc/cpuinfo)
-  if [ "$CPU_CORES" -gt 1 ]; then
-    logger "Set up Bundler to run on machine with $CPU_CORES cores"
-    bundle config --global jobs $((CPU_CORES - 1)) >> "$LOG_FILE"
+  if [ "$INSTALL_RVM" -eq 1 ]; then
+    local CPU_CORES=$(grep --count '^processor' /proc/cpuinfo)
+    if [ "$CPU_CORES" -gt 1 ]; then
+      logger "Set up Bundler to run on machine with $CPU_CORES cores"
+      bundle config --global jobs $((CPU_CORES - 1)) >> "$LOG_FILE"
+    fi
+
+    logger "Updating system gems.."
+    gem update --system >> "$LOG_FILE"
   fi
 
-  logger "Updating system gems.."
-  gem update --system >> "$LOG_FILE"
-
+  apt_install "imagemagick"
   apt_install "silversearcher-ag"
   apt_install "exuberant-ctags"
 }
@@ -285,7 +287,33 @@ remove_redis () {
 }
 
 start_install_process () {
-  logger "Starting installing required dependencies.."
+  logger "Install latest stable RVM and Ruby? [Y]es/No"
+  if [ "$(ask_for_permission)" == 1 ]; then
+    logger "Any specific Ruby version? [stable by default]"
+    read RUBY_VERSION_TO_INSTALL
+    INSTALL_RVM=1
+  fi
+
+  logger "Install latest NodeJs ? [Y]es/No"
+  if [ "$(ask_for_permission)" == 1 ]; then
+    INSTALL_NODE=1
+  fi
+
+  logger "Install latest MySQL ? [Y]es/No"
+  if [ "$(ask_for_permission)" == 1 ]; then
+    INSTALL_MYSQL=1
+  fi
+
+  logger "Install latest Postgresql ? [Y]es/No"
+  if [ "$(ask_for_permission)" == 1 ]; then
+    INSTALL_POSTGRE=1
+  fi
+
+  logger "Install latest Redis ? [Y]es/No"
+  if [ "$(ask_for_permission)" == 1 ]; then
+    INSTALL_REDIS=1
+  fi
+
   echo -e "\n\n------- INSTALL --------" >> "$LOG_FILE"
   install_dependencies
   install_rvm

@@ -21,7 +21,9 @@ $ chmod +x ./ubuntu_ruby_dev.sh
 $ ./ubuntu_ruby_dev.sh
 ```
 
-It will ask your confirmation for installation and a password.
+Enter a password, start installation process and select tools you want to install.
+
+After you can drink a cup of coffee or water, automated installation would take 15-20 minutes (depends on the amount of selected packages and Internet connection speed).
 
 
 Also revert option is available. (Unless you delete the `ubuntu_ruby_dev_revert.txt` file created during the installation.
@@ -64,26 +66,25 @@ What is included:
 * Ag
 * Ctags
 
-All packages and utilites comming with latest stable versions. Ruby itself as well.
-
-Currently you can edit the list to be installed only in script directly :scream:
+By default all packages and utilites comming with latest stable versions, inluding Ruby.
 
 
 TODO:
 -----
 
-- [ ] ask everything required at the beggining of execution to allow silent install without user iteraction
+- [x] ~~ask everything required at the beggining of execution to allow silent install without user iteraction~~
 - [x] ~~add automated testing (at least syntax)~~
 - [x] ~~refactor script syntax in accordance with Shellcheck style guides (Travis CI build status)~~
 - [x] ~~add 'verbose' option to show what is going on not only in log file~~
-- [x] ~~add possibility to select installation packages rather than install everything~~
+- [x] ~~add possibility to choose packages for install rather than install everything~~
 - [ ] check already installed tools, upgrade them or do nothing if not needed
-- [x] ~~add possibility to select required Ruby version rather than latest one~~
+- [x] ~~add possibility to install specific Ruby version rather than just latest one~~
 - [ ] add possibility to select default root password to MySQL rather that empty one
 - [ ] add possibility to read from external source file for additional packages or commands
 - [x] ~~implement more intellegent revert process to uninstall only packages installed by script itself~~
 - [ ] add post install message with information about installation paths and configuration options
 - [ ] make revert file dynamicly rather than at the end of execution (than if script fall in middle there would be something already)
+- [ ] additional automated testing ? (at least syntax)~~
 
 
 Inspired by:
