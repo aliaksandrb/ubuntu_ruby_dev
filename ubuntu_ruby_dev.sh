@@ -129,7 +129,7 @@ install_dependencies () {
 }
 
 rvm_signed_ok () {
-  if [ "$RUBY_VERSION_TO_INSTALL" != "0" ];then
+  if [ "$RUBY_VERSION_TO_INSTALL" != "" -a \( "$RUBY_VERSION_TO_INSTALL" != "0" \) ]; then
     curl -sSL https://get.rvm.io | bash -s stable --ruby=$RUBY_VERSION_TO_INSTALL &>> "$LOG_FILE"
   else
     curl -sSL https://get.rvm.io | bash -s stable --ruby &>> "$LOG_FILE"
@@ -210,6 +210,9 @@ install_mysql () {
     unset DEBIAN_FRONTEND
 
     if [ "$MYSQL_PASSWORD" != "" ]; then
+      if [ "$(check_if_running "mysql")" == 1 ]; then
+        p "sudo service mysql start"
+      fi
       mysqladmin -u root password $MYSQL_PASSWORD
     else
       logger "Do not forget to set MySQL root password: " "\`mysqladmin -u root password your_password\`"
