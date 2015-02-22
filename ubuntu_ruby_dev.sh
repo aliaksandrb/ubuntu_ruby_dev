@@ -210,9 +210,6 @@ install_mysql () {
     unset DEBIAN_FRONTEND
 
     if [ "$MYSQL_PASSWORD" != "" ]; then
-      if [ "$(check_if_running "mysql")" == 1 ]; then
-        p "sudo service mysql start"
-      fi
       mysqladmin -u root password $MYSQL_PASSWORD
     else
       logger "Do not forget to set MySQL root password: " "\`mysqladmin -u root password your_password\`"
@@ -337,6 +334,18 @@ start_install_process () {
   finish
 }
 
+reset_mysql_password () {
+  if [ "$(check_if_running "mysql")" == 0 ]; then
+    p "sudo service mysql stop"
+    p "sudo killall -vw mysqld"
+  fi
+
+  p "sudo mysqld_safe --skip-grant-tables" &
+  sleep 5
+  mysql mysql -e "UPDATE user SET Password=PASSWORD('') WHERE User='root';FLUSH PRIVILEGES;"
+  p "sudo killall -v mysqld"
+}
+
 revert () {
   logger "Reverting installation.."
   if [ -f $REVERT_FILE ]; then
@@ -345,6 +354,9 @@ revert () {
     for NAME in "${INSTALLED_DEPENDANCIES[@]}"
     do
       case "$NAME" in
+        "mysql-client")
+          reset_mysql_password
+          ;;
         "redis")
           remove_redis
           ;;
@@ -360,6 +372,7 @@ revert () {
       esac
       sed --in-place "/$NAME/d" "$REVERT_FILE"
     done
+
     rm -rf "$REVERT_FILE"
 
     p "sudo apt-get autoremove -y"
