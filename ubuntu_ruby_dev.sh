@@ -106,7 +106,9 @@ apt_install () {
 
 apt_remove () {
   local PACKAGE="$1"
-  logger "Removing: " "$PACKAGE"
+  if [ "$2" != "--silent" ];then
+    logger "Removing: " "$PACKAGE"
+  fi
   p "sudo apt-get remove -y $PACKAGE"
 }
 
@@ -188,7 +190,7 @@ ask_for_permission () {
 install_node () {
   logger "Install latest NodeJs ? [Y]es/No"
   if [ "$(ask_for_permission)" == 1 ]; then
-    apt_remove "nodejs"
+    apt_remove "nodejs" --silent
     p "curl -sL https://deb.nodesource.com/setup | sudo bash -"
     p "sudo apt-get -y update"
     apt_install "nodejs" # UPGRADE IF IT IS INSTALLED
@@ -287,7 +289,10 @@ start_install_process () {
   install_dependencies
   install_rvm
   install_dev_packages
-  echo "${INSTALLED_BY_SCRIPT[@]}" >> "$REVERT_FILE"
+  for NAME in "${INSTALLED_BY_SCRIPT[@]}"
+  do
+    echo -e "$NAME\n" >> "$REVERT_FILE"
+  done
   finish
 }
 
