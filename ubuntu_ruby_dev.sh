@@ -13,6 +13,7 @@ INSTALL_POSTGRE=0
 INSTALL_REDIS=0
 INSTALL_NODE=0
 RUBY_VERSION_TO_INSTALL="0"
+POST_INSTALL_MESSAGE=""
 
 usage () {
   echo "Usage: $0 [-h|--help|-i|--install|-r|--revert] [-v|--verbose]"
@@ -73,6 +74,9 @@ logger() {
 }
 
 finish () {
+  logger "-----------------------------------"
+  echo -e "$POST_INSTALL_MESSAGE"
+  logger "-----------------------------------"
   logger "Done! You may need to relogin to apply all changes."
   exit 0
 }
@@ -128,6 +132,10 @@ install_dependencies () {
   done
 }
 
+post_install_msg_add () {
+  POST_INSTALL_MESSAGE="$POST_INSTALL_MESSAGE\n $1"
+}
+
 rvm_signed_ok () {
   if [ "$RUBY_VERSION_TO_INSTALL" != "" -a \( "$RUBY_VERSION_TO_INSTALL" != "0" \) ]; then
     curl -sSL https://get.rvm.io | bash -s stable --ruby=$RUBY_VERSION_TO_INSTALL &>> "$LOG_FILE"
@@ -139,10 +147,10 @@ rvm_signed_ok () {
   local RVM_VERSION=$(rvm --version)
   local RUBY_VERSION=$(ruby --version)
   INSTALLED_BY_SCRIPT+=( rvm )
-  logger "RVM installed: " "v${RVM_VERSION:4:6}"
-  logger "With Ruby on board: " "v${RUBY_VERSION:5:5}"
 
-  logger "Reopen your shell or run: " "\`source $HOME/.rvm/scripts/rvm\`"
+  post_install_msg_add "RVM installed: v${RVM_VERSION:4:6}"
+  post_install_msg_add "With Ruby on board: v${RUBY_VERSION:5:5}"
+  post_install_msg_add "Reopen your shell or run: \`source $HOME/.rvm/scripts/rvm\`"
 }
 
 install_rvm () {
@@ -212,13 +220,14 @@ install_mysql () {
     if [ "$MYSQL_PASSWORD" != "" ]; then
       mysqladmin -u root password $MYSQL_PASSWORD
     else
-      logger "Do not forget to set MySQL root password: " "\`mysqladmin -u root password your_password\`"
+      post_install_msg_add "Do not forget to set MySQL root password: \`mysqladmin -u root password your_password\`"
     fi
 
     if [ "$(check_if_running "mysql")" == 0 ]; then
       p "sudo service mysql stop"
     fi
-    logger "Start the MySQL server with: " "\`sudo service mysql start\`"
+
+    post_install_msg_add "Start the MySQL server with: \`sudo service mysql start\`"
   fi
 }
 
@@ -229,7 +238,7 @@ install_postgre () {
     if [ "$(check_if_running "postgresql")" == 0 ]; then
       p "sudo service postgresql stop"
     fi
-    logger "Start the Postgresql server with: " "\`sudo service postgresql start\`"
+    post_install_msg_add "Start the Postgresql server with: \`sudo service postgresql start\`"
   fi
 }
 
@@ -246,9 +255,10 @@ install_redis () {
       rm -rf redis-stable redis.tar.gz
 
       local REDIS_VERSION=$(redis-server --version)
+
       INSTALLED_BY_SCRIPT+=( redis )
-      logger "Redis installed: " "v${REDIS_VERSION:15:6}"
-      logger "Start the Redis server with: " "\`sudo service redis_6379 start\`"
+      post_install_msg_add "Redis installed: v${REDIS_VERSION:15:6}"
+      post_install_msg_add "Start the Redis server with: \`sudo service redis_6379 start\`"
     else
       cd ..
       logger "Failed to install Redis: " "$RESULT"

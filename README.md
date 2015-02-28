@@ -34,7 +34,7 @@ Run in the same folder:
 $ ./ubuntu_ruby_dev.sh -r
 ```
 
-Than it will remove all installed packages. Use with caution!
+Than it will remove all installed packages.
 
 Processing logs will be available in the same folder in the `ubuntu_ruby_dev.log` file.
 
@@ -79,11 +79,11 @@ TODO:
 - [x] ~~add possibility to choose packages for install rather than install everything~~
 - [ ] check already installed tools, upgrade them or do nothing if not needed
 - [x] ~~add possibility to install specific Ruby version rather than just latest one~~
-- [x] add possibility to select default root password to MySQL rather that empty one
+- [x] ~~add possibility to select default root password to MySQL rather than empty one~~
 - [ ] add possibility to read from external source file for additional packages or commands
 - [x] ~~implement more intellegent revert process to uninstall only packages installed by script itself~~
-- [ ] add post install message with information about installation paths and configuration options
-- [ ] make revert file dynamicly rather than at the end of execution (than if script fall in middle there would be something already)
+- [x] ~~add post install message with information about installation paths and configuration options~~
+- [ ] make revert file dynamicly rather than at the end of execution (than if script falls in middle there would be something already)
 - [ ] ?additional automated testing (at least syntax)?
 
 
