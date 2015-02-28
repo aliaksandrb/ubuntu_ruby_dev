@@ -108,11 +108,11 @@ apt_install () {
   local PACKAGE="$1"
   if ! which "$PACKAGE" > /dev/null; then
     logger "Installing: " "$PACKAGE"
-    p "sudo apt-get install -y $PACKAGE"
     INSTALLED_BY_SCRIPT+=($PACKAGE)
   else
-    logger "Already installed: " "$PACKAGE"
+    logger "Upgrading: " "$PACKAGE"
   fi
+  p "sudo apt-get install -y $PACKAGE"
 }
 
 apt_remove () {
@@ -137,25 +137,34 @@ post_install_msg_add () {
 }
 
 rvm_signed_ok () {
-  if [ "$RUBY_VERSION_TO_INSTALL" != "" -a \( "$RUBY_VERSION_TO_INSTALL" != "0" \) ]; then
-    curl -sSL https://get.rvm.io | bash -s stable --ruby=$RUBY_VERSION_TO_INSTALL &>> "$LOG_FILE"
+  if ! which rvm > /dev/null; then
+    if [ "$RUBY_VERSION_TO_INSTALL" != "" -a \( "$RUBY_VERSION_TO_INSTALL" != "0" \) ]; then
+      curl -sSL https://get.rvm.io | bash -s stable --ruby=$RUBY_VERSION_TO_INSTALL &>> "$LOG_FILE"
+    else
+      curl -sSL https://get.rvm.io | bash -s stable --ruby &>> "$LOG_FILE"
+    fi
+    source "$HOME/.rvm/scripts/rvm"
+    INSTALLED_BY_SCRIPT+=( rvm )
   else
-    curl -sSL https://get.rvm.io | bash -s stable --ruby &>> "$LOG_FILE"
+    p "rvm get stable"
+    source "$HOME/.rvm/scripts/rvm"
+
+    if [ "$RUBY_VERSION_TO_INSTALL" != "" -a \( "$RUBY_VERSION_TO_INSTALL" != "0" \) ]; then
+      p "rvm install $RUBY_VERSION_TO_INSTALL"
+    fi
   fi
-  source "$HOME/.rvm/scripts/rvm"
 
   local RVM_VERSION=$(rvm --version)
   local RUBY_VERSION=$(ruby --version)
-  INSTALLED_BY_SCRIPT+=( rvm )
 
-  post_install_msg_add "RVM installed: v${RVM_VERSION:4:6}"
+  post_install_msg_add "RVM installed (upgraded): v${RVM_VERSION:4:6}"
   post_install_msg_add "With Ruby on board: v${RUBY_VERSION:5:5}"
   post_install_msg_add "Reopen your shell or run: \`source $HOME/.rvm/scripts/rvm\`"
 }
 
 install_rvm () {
   if [ "$INSTALL_RVM" -eq 1 ]; then
-    logger "Installing RVM and Ruby." " Took a while.."
+    logger "Installing (upgrading) RVM and Ruby." " Took a while.."
     local RESULT=$(gpg --keyserver hkp://keys.gnupg.net --recv-keys D39DC0E3 2>&1)
 
     if [ "$?" -ne 0 ]; then
@@ -163,7 +172,7 @@ install_rvm () {
       local RESULT=$(curl -sSL https://rvm.io/mpapis.asc | gpg --import -)
 
       if [ "$?" -ne 0 ]; then
-        logger "Failed to install RVM: " "$RESULT"
+        logger "Failed to install (upgrade) RVM: " "$RESULT"
         exit 1
       else
         rvm_signed_ok
@@ -203,21 +212,30 @@ ask_for_permission () {
 
 install_node () {
   if [ "$INSTALL_NODE" -eq 1 ]; then
-    apt_remove "nodejs" --silent
-    p "curl -sL https://deb.nodesource.com/setup | sudo bash -"
-    p "sudo apt-get -y update"
-    apt_install "nodejs" # UPGRADE IF IT IS INSTALLED
+    if ! which nodejs > /dev/null; then
+      p "curl -sL https://deb.nodesource.com/setup | sudo bash -"
+      p "sudo apt-get -y update"
+      apt_install "nodejs"
+    else
+      p "sudo apt-get install -y nodejs"
+    fi
   fi
 }
 
 install_mysql () {
   if [ "$INSTALL_MYSQL" -eq 1 ]; then
-    INSTALLED_BY_SCRIPT+=(mysql-server mysql-client libmysqlclient-dev)
-    logger "Installing: " "MySQL"
-    p "sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -q mysql-server mysql-client libmysqlclient-dev"
-    unset DEBIAN_FRONTEND
+    if ! which mysql > /dev/null; then
+      INSTALLED_BY_SCRIPT+=(mysql-server mysql-client libmysqlclient-dev)
+
+      logger "Installing: " "MySQL"
+      p "sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -q mysql-server mysql-client libmysqlclient-dev"
+      unset DEBIAN_FRONTEND
+    else
+      p "sudo apt-get install -y mysql-server mysql-client libmysqlclient-dev"
+    fi
 
     if [ "$MYSQL_PASSWORD" != "" ]; then
+      p "sudo service mysql start"
       mysqladmin -u root password $MYSQL_PASSWORD
     else
       post_install_msg_add "Do not forget to set MySQL root password: \`mysqladmin -u root password your_password\`"
@@ -233,8 +251,13 @@ install_mysql () {
 
 install_postgre () {
   if [ "$INSTALL_POSTGRE" -eq 1 ]; then
-    apt_install "postgresql"
-    apt_install "postgresql-contrib"
+    if ! which psql > /dev/null; then
+      apt_install "postgresql"
+      apt_install "postgresql-contrib"
+    else
+      p "sudo apt-get install -y postgresql postgresql-contrib"
+    fi
+
     if [ "$(check_if_running "postgresql")" == 0 ]; then
       p "sudo service postgresql stop"
     fi
@@ -304,26 +327,26 @@ remove_redis () {
 }
 
 start_install_process () {
-  logger "Install latest stable RVM and Ruby? [Y]es/No"
+  logger "Install (upgrade) latest stable RVM? [Y]es/No"
   if [ "$(ask_for_permission)" == 1 ]; then
     logger "Any specific Ruby version? [stable by default]"
     read RUBY_VERSION_TO_INSTALL
     INSTALL_RVM=1
   fi
 
-  logger "Install latest NodeJs ? [Y]es/No"
+  logger "Install (upgrade) latest NodeJs ? [Y]es/No"
   if [ "$(ask_for_permission)" == 1 ]; then
     INSTALL_NODE=1
   fi
 
-  logger "Install latest MySQL ? [Y]es/No"
+  logger "Install (upgrade) latest MySQL ? [Y]es/No"
   if [ "$(ask_for_permission)" == 1 ]; then
     logger "Want to set up root password? (installed without a password by default)"
     read MYSQL_PASSWORD
     INSTALL_MYSQL=1
   fi
 
-  logger "Install latest Postgresql ? [Y]es/No"
+  logger "Install (upgrade) latest Postgresql ? [Y]es/No"
   if [ "$(ask_for_permission)" == 1 ]; then
     INSTALL_POSTGRE=1
   fi

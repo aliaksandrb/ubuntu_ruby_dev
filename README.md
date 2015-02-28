@@ -77,7 +77,7 @@ TODO:
 - [x] ~~refactor script syntax in accordance with Shellcheck style guides (Travis CI build status)~~
 - [x] ~~add 'verbose' option to show what is going on not only in log file~~
 - [x] ~~add possibility to choose packages for install rather than install everything~~
-- [ ] check already installed tools, upgrade them or do nothing if not needed
+- [x] ~~check already installed tools, upgrade them or do nothing if not needed (Except Redis which would just reinstalled)~~
 - [x] ~~add possibility to install specific Ruby version rather than just latest one~~
 - [x] ~~add possibility to select default root password to MySQL rather than empty one~~
 - [ ] add possibility to read from external source file for additional packages or commands
