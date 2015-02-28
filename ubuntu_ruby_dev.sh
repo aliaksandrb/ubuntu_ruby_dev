@@ -104,14 +104,46 @@ check_if_running () {
   echo $?
 }
 
-apt_install () {
-  local PACKAGE="$1"
-  if ! which "$PACKAGE" > /dev/null; then
+log_apt_install () {
+  if [ "$2" != "" ]; then
+    local PACKAGE=$2
+  else
+    local PACKAGE=$1
+  fi
+
+  if ! which "$1" > /dev/null; then
     logger "Installing: " "$PACKAGE"
     INSTALLED_BY_SCRIPT+=($PACKAGE)
   else
     logger "Upgrading: " "$PACKAGE"
   fi
+}
+
+apt_install () {
+  local PACKAGE="$1"
+
+  # some packages have executable that differs from its name
+  case "$PACKAGE" in
+    "imagemagick")
+      log_apt_install "convert"
+      ;;
+    "silversearcher-ag")
+      log_apt_install "ag"
+      ;;
+    "exuberant-ctags")
+      log_apt_install "ctags-exuberant"
+      ;;
+    "mysql-server"|"mysql-client"|"libmysqlclient-dev")
+      log_apt_install "mysql" "$PACKAGE"
+      ;;
+    "postgresql"|"postgresql-contrib")
+      log_apt_install "psql" "$PACKAGE"
+      ;;
+    *)
+      log_apt_install "$PACKAGE"
+      ;;
+  esac
+
   p "sudo apt-get install -y $PACKAGE"
 }
 
@@ -231,7 +263,9 @@ install_mysql () {
       p "sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -q mysql-server mysql-client libmysqlclient-dev"
       unset DEBIAN_FRONTEND
     else
-      p "sudo apt-get install -y mysql-server mysql-client libmysqlclient-dev"
+      apt_install "mysql-server"
+      apt_install "mysql-client"
+      apt_install "libmysqlclient-dev"
     fi
 
     if [ "$MYSQL_PASSWORD" != "" ]; then
@@ -251,12 +285,8 @@ install_mysql () {
 
 install_postgre () {
   if [ "$INSTALL_POSTGRE" -eq 1 ]; then
-    if ! which psql > /dev/null; then
-      apt_install "postgresql"
-      apt_install "postgresql-contrib"
-    else
-      p "sudo apt-get install -y postgresql postgresql-contrib"
-    fi
+    apt_install "postgresql"
+    apt_install "postgresql-contrib"
 
     if [ "$(check_if_running "postgresql")" == 0 ]; then
       p "sudo service postgresql stop"
@@ -317,7 +347,7 @@ remove_node () {
 }
 
 remove_redis () {
-  logger "Removing Redis"
+  logger "Removing: " "redis"
   p "sudo service redis_6379 stop"
   p "sudo rm /usr/local/bin/redis-*"
   p "sudo rm -r /etc/redis/"
